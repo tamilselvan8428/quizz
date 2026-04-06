@@ -1,4 +1,4 @@
-const API_URL = '/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const getHeaders = () => {
   const token = localStorage.getItem('token');
@@ -48,6 +48,16 @@ export const api = {
         headers: getHeaders(),
       });
       return res.json();
+    },
+    updatePassword: async (id, password) => {
+      const res = await fetch(`${API_URL}/users/${id}/password`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Update failed');
+      return data;
     },
   },
   quizzes: {

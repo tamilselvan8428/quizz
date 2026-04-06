@@ -17,19 +17,49 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://tamil:tamil2005@cluster0.lxk1iio.mongodb.net/?appName=Cluster0";
-const JWT_SECRET = process.env.JWT_SECRET || "quizmoz_secret_key_2026";
+const MONGODB_URI = process.env.MONGODB_URI;
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!MONGODB_URI) {
+  console.error("MONGODB_URI is not defined in environment variables");
+  process.exit(1);
+}
+
+if (!JWT_SECRET) {
+  console.error("JWT_SECRET is not defined in environment variables");
+  process.exit(1);
+}
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
-  app.use(cors());
+  app.use(cors({
+    origin: process.env.FRONTEND_URL || "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+  }));
   app.use(express.json({ limit: '50mb' })); // For base64 images
 
   // MongoDB Connection
   mongoose.connect(MONGODB_URI)
-    .then(() => console.log("Connected to MongoDB"))
+    .then(async () => {
+      console.log("Connected to MongoDB");
+      // Seed default admin if no users exist
+      const adminCount = await User.countDocuments({ role: 'ADMIN' });
+      if (adminCount === 0) {
+        const hashedPassword = await bcrypt.hash("admin123", 10);
+        const admin = new User({
+          name: "System Admin",
+          rollNo: "admin",
+          password: hashedPassword,
+          role: "ADMIN",
+          department: "System"
+        });
+        await admin.save();
+        console.log("Default admin created: admin / admin123");
+      }
+    })
     .catch(err => console.error("MongoDB connection error:", err));
 
   // Auth Middleware
@@ -92,6 +122,18 @@ async function startServer() {
       if (req.user.role !== 'ADMIN') return res.status(403).json({ error: "Forbidden" });
       await User.findByIdAndDelete(req.params.id);
       res.json({ message: "User deleted" });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put("/api/users/:id/password", authenticate, async (req, res) => {
+    try {
+      if (req.user.role !== 'ADMIN') return res.status(403).json({ error: "Forbidden" });
+      const { password } = req.body;
+      const hashedPassword = await bcrypt.hash(password, 10);
+      await User.findByIdAndUpdate(req.params.id, { password: hashedPassword });
+      res.json({ message: "Password updated successfully" });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

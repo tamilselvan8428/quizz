@@ -1,10 +1,16 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api.js';
-import { Users, UserPlus, Trash2, Shield, User as UserIcon } from 'lucide-react';
+import { Users, UserPlus, Trash2, Shield, User as UserIcon, Key } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [showAddStaff, setShowAddStaff] = useState(false);
+  const [showUpdatePassword, setShowUpdatePassword] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [newStaff, setNewStaff] = useState({
     name: '',
     rollNo: '',
@@ -27,6 +33,7 @@ export default function AdminDashboard() {
 
   const handleAddStaff = async (e) => {
     e.preventDefault();
+    setError('');
     try {
       await api.auth.register({
         ...newStaff,
@@ -35,19 +42,40 @@ export default function AdminDashboard() {
       fetchUsers();
       setShowAddStaff(false);
       setNewStaff({ name: '', rollNo: '', password: '', department: '' });
+      setSuccess('Staff account created successfully');
+      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      alert(err.message);
+      setError(err.message);
     }
   };
 
-  const handleDeleteUser = async (id) => {
-    if (confirm('Are you sure you want to delete this user?')) {
-      try {
-        await api.users.delete(id);
-        fetchUsers();
-      } catch (err) {
-        alert(err.message);
-      }
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    setError('');
+    try {
+      await api.users.delete(selectedUser._id);
+      fetchUsers();
+      setShowDeleteConfirm(false);
+      setSelectedUser(null);
+      setSuccess('User deleted successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await api.users.updatePassword(selectedUser._id, newPassword);
+      setSuccess('Password updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
+      setShowUpdatePassword(false);
+      setNewPassword('');
+      setSelectedUser(null);
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -65,6 +93,20 @@ export default function AdminDashboard() {
           <UserPlus className="w-5 h-5" /> Add Staff Account
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">×</button>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <span>{success}</span>
+          <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">×</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -123,7 +165,7 @@ export default function AdminDashboard() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {users.map(user => (
-                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={user._id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{user.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">{user.rollNo}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -137,14 +179,32 @@ export default function AdminDashboard() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">{user.department}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-right">
-                    {user.role !== 'ADMIN' && (
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-400 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    )}
+                    <div className="flex items-center justify-end gap-3">
+                      {user.role !== 'ADMIN' && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowUpdatePassword(true);
+                            }}
+                            className="text-indigo-400 hover:text-indigo-600 transition-colors"
+                            title="Update Password"
+                          >
+                            <Key className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowDeleteConfirm(true);
+                            }}
+                            className="text-red-400 hover:text-red-600 transition-colors"
+                            title="Delete User"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -214,6 +274,79 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showUpdatePassword && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Update Password</h2>
+            <p className="text-gray-500 mb-6">Updating password for {selectedUser?.name}</p>
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowUpdatePassword(false);
+                    setSelectedUser(null);
+                    setNewPassword('');
+                    setError('');
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Update Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash2 className="w-8 h-8 text-red-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Delete User</h2>
+            <p className="text-gray-500 text-center mb-8">
+              Are you sure you want to delete <span className="font-bold text-gray-900">{selectedUser?.name}</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setSelectedUser(null);
+                  setError('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

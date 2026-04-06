@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx backend/server.js",
-    "build": "vite build frontend",
+    "start": "node backend/server.js",
+    "build": "vite build frontend --outDir ../dist --emptyOutDir",
     "lint": "eslint frontend/src backend",
     "preview": "vite preview frontend",
     "clean": "rm -rf dist"

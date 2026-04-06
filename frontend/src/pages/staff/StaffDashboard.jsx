@@ -9,6 +9,13 @@ export default function StaffDashboard() {
   const [results, setResults] = useState([]);
   const [students, setStudents] = useState([]);
   const [activeTab, setActiveTab] = useState('quizzes');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
+  const [showScoreUpdate, setShowScoreUpdate] = useState(false);
+  const [selectedResult, setSelectedResult] = useState(null);
+  const [newScore, setNewScore] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -31,27 +38,36 @@ export default function StaffDashboard() {
     fetchData();
   }, []);
 
-  const handleDeleteQuiz = async (id) => {
-    if (confirm('Are you sure you want to delete this quiz?')) {
-      try {
-        await api.quizzes.delete(id);
-        setQuizzes(quizzes.filter(q => q._id !== id));
-      } catch (err) {
-        alert(err.message);
-      }
+  const handleDeleteQuiz = async () => {
+    if (!selectedQuiz) return;
+    setError('');
+    try {
+      await api.quizzes.delete(selectedQuiz._id);
+      setQuizzes(quizzes.filter(q => q._id !== selectedQuiz._id));
+      setShowDeleteConfirm(false);
+      setSelectedQuiz(null);
+      setSuccess('Quiz deleted successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message);
     }
   };
 
-  const handleUpdateScore = async (resultId, newScore) => {
-    const result = results.find(r => r._id === resultId);
-    if (result) {
-      try {
-        const updatedResult = { ...result, score: newScore };
-        await api.results.update(updatedResult);
-        setResults(results.map(r => r._id === resultId ? updatedResult : r));
-      } catch (err) {
-        alert(err.message);
-      }
+  const handleUpdateScore = async (e) => {
+    e.preventDefault();
+    if (!selectedResult) return;
+    setError('');
+    try {
+      const updatedResult = { ...selectedResult, score: parseInt(newScore) };
+      await api.results.update(updatedResult);
+      setResults(results.map(r => r._id === selectedResult._id ? updatedResult : r));
+      setShowScoreUpdate(false);
+      setSelectedResult(null);
+      setNewScore('');
+      setSuccess('Score updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -59,13 +75,14 @@ export default function StaffDashboard() {
     const quizResults = results.filter(r => r.quizId === quiz._id);
     
     if (quizResults.length === 0) {
-      alert('No results found for this quiz.');
+      setError('No results found for this quiz.');
+      setTimeout(() => setError(''), 3000);
       return;
     }
 
     const data = quizResults.map(r => {
       // Find student details if not in result (for older results)
-      const student = students.find(s => s.id === r.studentId);
+      const student = students.find(s => s._id === r.studentId);
       return {
         'Name': r.studentName,
         'Roll No': r.rollNo,
@@ -99,6 +116,20 @@ export default function StaffDashboard() {
           <Plus className="w-5 h-5" /> Create New Quiz
         </Link>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">×</button>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <span>{success}</span>
+          <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">×</button>
+        </div>
+      )}
 
       <div className="flex gap-4 border-b border-gray-200">
         <button
@@ -157,7 +188,10 @@ export default function StaffDashboard() {
                       <Edit className="w-5 h-5" />
                     </button>
                     <button
-                      onClick={() => handleDeleteQuiz(quiz._id)}
+                      onClick={() => {
+                        setSelectedQuiz(quiz);
+                        setShowDeleteConfirm(true);
+                      }}
                       className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
                     >
                       <Trash2 className="w-5 h-5" />
@@ -208,7 +242,7 @@ export default function StaffDashboard() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {students.map(student => (
-                  <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={student._id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{student.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-600">{student.rollNo}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-600">{student.department}</td>
@@ -229,8 +263,8 @@ export default function StaffDashboard() {
             <button
               onClick={() => {
                 const data = results.map(r => {
-                  const student = students.find(s => s.id === r.studentId);
-                  const quiz = quizzes.find(q => q.id === r.quizId);
+                  const student = students.find(s => s._id === r.studentId);
+                  const quiz = quizzes.find(q => q._id === r.quizId);
                   return {
                     'Student Name': r.studentName,
                     'Roll No': r.rollNo,
@@ -286,8 +320,9 @@ export default function StaffDashboard() {
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <button
                         onClick={() => {
-                          const newScore = prompt('Enter new score:', result.score.toString());
-                          if (newScore !== null) handleUpdateScore(result._id, parseInt(newScore));
+                          setSelectedResult(result);
+                          setNewScore(result.score.toString());
+                          setShowScoreUpdate(true);
                         }}
                         className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
                       >
@@ -301,6 +336,81 @@ export default function StaffDashboard() {
           </div>
         </div>
       </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash2 className="w-8 h-8 text-red-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Delete Quiz</h2>
+            <p className="text-gray-500 text-center mb-8">
+              Are you sure you want to delete <span className="font-bold text-gray-900">{selectedQuiz?.title}</span>? All results associated with this quiz will remain but the quiz itself will be gone.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setSelectedQuiz(null);
+                  setError('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteQuiz}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showScoreUpdate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Update Score</h2>
+            <p className="text-gray-500 mb-6">Updating score for {selectedResult?.studentName}</p>
+            <form onSubmit={handleUpdateScore} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New Score (out of {selectedResult?.totalQuestions})</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  max={selectedResult?.totalQuestions}
+                  value={newScore}
+                  onChange={(e) => setNewScore(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowScoreUpdate(false);
+                    setSelectedResult(null);
+                    setNewScore('');
+                    setError('');
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Update Score
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
