@@ -139,6 +139,35 @@ async function startServer() {
     }
   });
 
+  app.put("/api/users/profile", authenticate, async (req, res) => {
+    try {
+      const { name, rollNo, department, section, batch, password } = req.body;
+      const updateData = { name, rollNo, department, section, batch };
+      
+      if (password) {
+        updateData.password = await bcrypt.hash(password, 10);
+      }
+
+      const user = await User.findByIdAndUpdate(
+        req.user.id,
+        updateData,
+        { new: true }
+      ).select("-password");
+      
+      res.json({
+        id: user._id,
+        name: user.name,
+        rollNo: user.rollNo,
+        role: user.role,
+        department: user.department,
+        section: user.section,
+        batch: user.batch
+      });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   // Quiz Routes
   app.get("/api/quizzes", authenticate, async (req, res) => {
     try {

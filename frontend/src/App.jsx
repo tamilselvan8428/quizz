@@ -27,6 +27,11 @@ export default function App() {
     setUser(userData);
   };
 
+  const handleUpdateUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem('current_user', JSON.stringify(userData));
+  };
+
   const handleLogout = () => {
     api.auth.logout();
     setUser(null);
@@ -40,7 +45,7 @@ export default function App() {
         <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} />
         <Route path="/register" element={!user ? <Register /> : <Navigate to="/" />} />
         
-        <Route element={<Layout user={user} onLogout={handleLogout} />}>
+        <Route element={<Layout user={user} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />}>
           <Route path="/" element={
             user?.role === 'ADMIN' ? <AdminDashboard /> :
             user?.role === 'STAFF' ? <StaffDashboard /> :

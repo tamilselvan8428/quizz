@@ -59,6 +59,16 @@ export const api = {
       if (!res.ok) throw new Error(data.error || 'Update failed');
       return data;
     },
+    updateProfile: async (profileData) => {
+      const res = await fetch(`${API_URL}/users/profile`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(profileData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Profile update failed');
+      return data;
+    },
   },
   quizzes: {
     getAll: async () => {
