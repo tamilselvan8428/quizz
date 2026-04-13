@@ -14,6 +14,7 @@ export default function QuizPlayer({ user }) {
   const [isFinished, setIsFinished] = useState(false);
   const [violations, setViolations] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
+  const [error, setError] = useState('');
   const containerRef = useRef(null);
 
   const fetchQuiz = async () => {
@@ -75,7 +76,8 @@ export default function QuizPlayer({ user }) {
   const enterFullScreen = () => {
     if (containerRef.current) {
       containerRef.current.requestFullscreen().catch(err => {
-        alert(`Error attempting to enable full-screen mode: ${err.message}`);
+        setError(`Error attempting to enable full-screen mode: ${err.message}`);
+        setTimeout(() => setError(''), 3000);
       });
     }
   };
@@ -106,7 +108,8 @@ export default function QuizPlayer({ user }) {
       setIsFinished(true);
       if (document.fullscreenElement) document.exitFullscreen();
     } catch (err) {
-      alert('Failed to submit quiz: ' + err.message);
+      setError('Failed to submit quiz: ' + err.message);
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -123,6 +126,12 @@ export default function QuizPlayer({ user }) {
     <div ref={containerRef} className="min-h-screen bg-gray-50">
       {!isFullScreen && !isFinished ? (
         <div className="max-w-2xl mx-auto pt-20 text-center space-y-6 p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
+              <span>{error}</span>
+              <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">×</button>
+            </div>
+          )}
           <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100 flex items-center gap-3 text-yellow-700">
             <AlertTriangle className="w-6 h-6 shrink-0" />
             <p className="text-sm font-medium">This quiz must be taken in full-screen mode. Exiting full-screen will pause the timer.</p>
@@ -167,6 +176,11 @@ export default function QuizPlayer({ user }) {
                 <h2 className="text-xl font-bold text-gray-900">{quiz.title}</h2>
                 <p className="text-sm text-gray-500">Question {currentQuestionIdx + 1} of {quiz.questions.length}</p>
               </div>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
               <div className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono font-bold text-lg ${timeLeft < 60 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-indigo-100 text-indigo-600'}`}>
                 <Clock className="w-5 h-5" /> {formatTime(timeLeft)}
               </div>

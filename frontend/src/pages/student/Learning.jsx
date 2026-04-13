@@ -15,6 +15,10 @@ export default function Learning() {
   const [practiceQuiz, setPracticeQuiz] = useState(null);
   const [quizAnswers, setQuizAnswers] = useState([]);
   const [showResults, setShowResults] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const chatEndRef = useRef(null);
 
   const fetchSessions = async (studentId) => {
@@ -77,7 +81,8 @@ export default function Learning() {
 
     } catch (error) {
       console.error(error);
-      alert('Failed to start learning session');
+      setError('Failed to start learning session');
+      setTimeout(() => setError(''), 3000);
     } finally {
       setLoading(false);
       setStreamingText('');
@@ -113,23 +118,27 @@ export default function Learning() {
       fetchSessions(user.id);
     } catch (error) {
       console.error(error);
-      alert('Failed to send message');
+      setError('Failed to send message');
+      setTimeout(() => setError(''), 3000);
     } finally {
       setLoading(false);
       setStreamingText('');
     }
   };
 
-  const deleteSession = async (e, id) => {
-    e.stopPropagation();
-    if (confirm('Are you sure you want to delete this learning session?')) {
-      try {
-        await api.learning.delete(id);
-        if (user) fetchSessions(user.id);
-        if (currentSession?._id === id) setCurrentSession(null);
-      } catch (err) {
-        alert(err.message);
-      }
+  const deleteSession = async () => {
+    if (!selectedSession) return;
+    setError('');
+    try {
+      await api.learning.delete(selectedSession._id);
+      if (user) fetchSessions(user.id);
+      if (currentSession?._id === selectedSession._id) setCurrentSession(null);
+      setShowDeleteConfirm(false);
+      setSelectedSession(null);
+      setSuccess('Learning session deleted successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -270,6 +279,20 @@ export default function Learning() {
         <p className="text-gray-500 text-lg">Start a new learning journey or continue where you left off</p>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between max-w-md mx-auto">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">×</button>
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center justify-between max-w-md mx-auto">
+          <span>{success}</span>
+          <button onClick={() => setSuccess('')} className="text-green-500 hover:text-green-700">×</button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Create New Learning Box */}
         <div className="aspect-square bg-white rounded-3xl border-2 border-dashed border-indigo-200 p-8 flex flex-col items-center justify-center text-center group hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1"
@@ -296,7 +319,11 @@ export default function Learning() {
                   <BookOpen className="w-6 h-6 text-gray-400 group-hover:text-indigo-500 transition-colors" />
                 </div>
                 <button 
-                  onClick={(e) => deleteSession(e, session._id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedSession(session);
+                    setShowDeleteConfirm(true);
+                  }}
                   className="p-2 text-gray-300 hover:text-red-500 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -357,6 +384,38 @@ export default function Learning() {
           </form>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Trash2 className="w-8 h-8 text-red-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Delete Session</h2>
+            <p className="text-gray-500 text-center mb-8">
+              Are you sure you want to delete <span className="font-bold text-gray-900">{selectedSession?.topic}</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setSelectedSession(null);
+                  setError('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteSession}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

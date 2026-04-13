@@ -10,6 +10,7 @@ export default function CreateQuiz() {
   const [aiLoading, setAiLoading] = useState(false);
   const [creationMode, setCreationMode] = useState(id ? 'manual' : null);
   const [aiConfig, setAiConfig] = useState({ topic: '', count: 5 });
+  const [error, setError] = useState('');
   const [quiz, setQuiz] = useState({
     title: '', description: '', topic: '', questions: [],
     startTime: '', endTime: '', duration: 30,
@@ -73,8 +74,13 @@ export default function CreateQuiz() {
   };
 
   const handleGenerateAI = async () => {
-    if (!aiConfig.topic) return alert('Please enter a topic first');
+    if (!aiConfig.topic) {
+      setError('Please enter a topic first');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
     setAiLoading(true);
+    setError('');
     try {
       const aiQuestions = await aiService.generateQuiz(aiConfig.topic, aiConfig.count);
       const formatted = aiQuestions.map((q) => ({ id: crypto.randomUUID(), ...q }));
@@ -87,7 +93,8 @@ export default function CreateQuiz() {
       setCreationMode('manual');
     } catch (error) {
       console.error(error);
-      alert('AI generation failed');
+      setError('AI generation failed');
+      setTimeout(() => setError(''), 3000);
     } finally {
       setAiLoading(false);
     }
@@ -95,8 +102,11 @@ export default function CreateQuiz() {
 
   const handleSave = async () => {
     if (!quiz.title || !quiz.startTime || !quiz.endTime || !quiz.questions?.length) {
-      return alert('Please fill all required fields (Title, Times, and at least one question)');
+      setError('Please fill all required fields (Title, Times, and at least one question)');
+      setTimeout(() => setError(''), 3000);
+      return;
     }
+    setError('');
     try {
       const currentUser = JSON.parse(localStorage.getItem('current_user') || '{}');
       const finalQuiz = {
@@ -107,7 +117,8 @@ export default function CreateQuiz() {
       await api.quizzes.save(finalQuiz);
       navigate('/');
     } catch (err) {
-      alert(err.message);
+      setError(err.message);
+      setTimeout(() => setError(''), 3000);
     }
   };
 
@@ -118,6 +129,13 @@ export default function CreateQuiz() {
           <h1 className="text-4xl font-bold text-gray-900">How would you like to create your quiz?</h1>
           <p className="text-gray-500 text-lg">Choose between manual entry or AI-powered generation.</p>
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between max-w-md mx-auto">
+            <span>{error}</span>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">×</button>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
           <button
@@ -152,6 +170,13 @@ export default function CreateQuiz() {
         <button onClick={() => setCreationMode(null)} className="flex items-center gap-2 text-gray-500 hover:text-gray-700">
           <ArrowLeft className="w-4 h-4" /> Back to selection
         </button>
+        
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">×</button>
+          </div>
+        )}
         
         <div className="bg-white p-8 rounded-2xl shadow-sm border space-y-6">
           <div className="text-center space-y-2">
@@ -213,6 +238,13 @@ export default function CreateQuiz() {
         <button onClick={() => id ? navigate('/') : setCreationMode(null)} className="p-2 hover:bg-gray-100 rounded-full"><ArrowLeft /></button>
         <h1 className="text-3xl font-bold">{id ? 'Edit Quiz' : 'Create Quiz'}</h1>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">×</button>
+        </div>
+      )}
 
       <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
