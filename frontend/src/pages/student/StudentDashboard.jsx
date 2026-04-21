@@ -36,6 +36,13 @@ export default function StudentDashboard() {
     return now >= start && now <= end && !alreadyTaken;
   };
 
+  const isQuizUpcoming = (quiz) => {
+    const now = new Date();
+    const start = new Date(quiz.startTime);
+    const alreadyTaken = results.some(r => r.quizId === quiz._id);
+    return now < start && !alreadyTaken;
+  };
+
   return (
     <div className="space-y-8">
       <div className="bg-indigo-600 rounded-2xl p-8 text-white shadow-xl shadow-indigo-200">
@@ -52,6 +59,15 @@ export default function StudentDashboard() {
         >
           Available Quizzes
           {activeTab === 'available' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
+        </button>
+        <button
+          onClick={() => setActiveTab('upcoming')}
+          className={`pb-4 px-4 font-medium transition-colors relative ${
+            activeTab === 'upcoming' ? 'text-indigo-600' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Upcoming Quizzes
+          {activeTab === 'upcoming' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
         </button>
         <button
           onClick={() => setActiveTab('results')}
@@ -92,6 +108,43 @@ export default function StudentDashboard() {
                 >
                   Start Quiz <ChevronRight className="w-4 h-4" />
                 </Link>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {activeTab === 'upcoming' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {quizzes.filter(isQuizUpcoming).length === 0 ? (
+            <div className="col-span-full py-12 text-center bg-white rounded-xl border-2 border-dashed border-gray-200">
+              <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500">No upcoming quizzes scheduled.</p>
+            </div>
+          ) : (
+            quizzes.filter(isQuizUpcoming).map(quiz => (
+              <div key={quiz._id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col opacity-75">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-lg font-bold text-gray-900">{quiz.title}</h3>
+                  <span className="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-full font-medium">Upcoming</span>
+                </div>
+                <p className="text-gray-600 text-sm mb-4 flex-1">{quiz.description}</p>
+                <div className="space-y-2 mb-6">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Clock className="w-4 h-4" />
+                    <span>Starts: {new Date(quiz.startTime).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <ClipboardList className="w-4 h-4" />
+                    <span>{quiz.questions.length} Questions • {quiz.duration} mins</span>
+                  </div>
+                </div>
+                <button
+                  disabled
+                  className="w-full bg-gray-100 text-gray-400 py-2 rounded-lg font-semibold text-center cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  Not Yet Started
+                </button>
               </div>
             ))
           )}
